@@ -1,6 +1,6 @@
 # Core Inventory Management System (IMS)
 
-A professional, high-fidelity Full-Stack Inventory Management System inspired by Odoo, featuring a modern "Midnight Dark" Enterprise UI. This system is designed to digitize and streamline all stock-related operations, replacing manual tracking with a centralized, real-time solution.
+A professional, Full-Stack Inventory Management System inspired by Odoo, featuring a modern "Dark" Enterprise UI. This system is designed to digitize and streamline all stock-related operations, replacing manual tracking with a centralized, real-time solution.
 
 ## 🌟 Key Features
 
