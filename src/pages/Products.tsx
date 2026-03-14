@@ -1,147 +1,136 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect here
 import { Plus, Search } from 'lucide-react';
-import { useInventoryStore } from '@/stores/inventoryStore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { ProductCategory, UnitOfMeasure, WarehouseLocation } from '@/stores/inventoryStore';
+
+// ── Types ──────────────────────────────────────────────────────────────────
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  uom: string;
+  current_stock: number;
+  reorder_level: number;
+  location?: string;
+  cost_price?: number;
+  selling_price?: number;
+}
 
 export default function Products() {
-  const { products, addProduct } = useInventoryStore();
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [open, setOpen] = useState(false);
 
+  // ── 1. Fetch live products from Neon via your Express server ─────────────
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/kpi/products");
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // ── 2. Filter Logic ──────────────────────────────────────────────────────
   const filtered = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = p.name?.toLowerCase().includes(search.toLowerCase()) || 
+                        p.sku?.toLowerCase().includes(search.toLowerCase());
     const matchCat = categoryFilter === 'all' || p.category === categoryFilter;
     return matchSearch && matchCat;
   });
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    addProduct({
-      sku: fd.get('sku') as string,
-      name: fd.get('name') as string,
-      category: fd.get('category') as ProductCategory,
-      uom: fd.get('uom') as UnitOfMeasure,
-      stock: Number(fd.get('stock')),
-      reorderLevel: Number(fd.get('reorderLevel')),
-      reorderQty: Number(fd.get('reorderQty')),
-      location: fd.get('location') as WarehouseLocation,
-      costPrice: Number(fd.get('costPrice')),
-      sellingPrice: Number(fd.get('sellingPrice')),
-    });
-    setOpen(false);
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  const fd = new FormData(e.currentTarget);
+  
+  const newProduct = {
+    sku: fd.get('sku'),
+    name: fd.get('name'),
+    category: fd.get('category'),
+    uom: fd.get('uom'),
+    stock: Number(fd.get('stock')),
+    reorderLevel: Number(fd.get('reorderLevel'))
   };
+
+  try {
+    const res = await fetch("http://localhost:3000/api/kpi/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newProduct),
+    });
+
+    if (res.ok) {
+      setOpen(false);
+      fetchProducts(); // Refresh the list automatically
+    } else {
+      alert("Error adding product. Check if SKU is unique.");
+    }
+  } catch (err) {
+    console.error("Add Product Error:", err);
+  }
+};
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Product Catalog</h1>
-          <p className="text-sm text-muted-foreground mt-1">{products.length} products managed</p>
+          <p className="text-sm text-muted-foreground mt-1">{products.length} products managed (Live from Neon)</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader><DialogTitle>New Product</DialogTitle></DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>SKU</Label><Input name="sku" required placeholder="ELC-004" className="font-mono" /></div>
-                <div><Label>Name</Label><Input name="name" required placeholder="Product Name" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Category</Label>
-                  <Select name="category" defaultValue="Electronics">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(['Electronics', 'Furniture', 'Raw Materials', 'Consumables', 'Packaging'] as const).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Unit</Label>
-                  <Select name="uom" defaultValue="Units">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(['Units', 'Kg', 'Liters', 'Meters', 'Boxes'] as const).map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><Label>Stock</Label><Input name="stock" type="number" defaultValue={0} /></div>
-                <div><Label>Reorder Level</Label><Input name="reorderLevel" type="number" defaultValue={50} /></div>
-                <div><Label>Reorder Qty</Label><Input name="reorderQty" type="number" defaultValue={100} /></div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><Label>Location</Label>
-                  <Select name="location" defaultValue="Warehouse A">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(['Warehouse A', 'Warehouse B', 'Rack A', 'Rack B', 'Rack C'] as const).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Cost Price</Label><Input name="costPrice" type="number" step="0.01" defaultValue={0} /></div>
-                <div><Label>Sell Price</Label><Input name="sellingPrice" type="number" step="0.01" defaultValue={0} /></div>
-              </div>
-              <Button type="submit" className="w-full">Create Product</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <Plus className="w-4 h-4 mr-1" /> Add Product
+        </Button>
       </div>
 
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search SKU or Name..." className="pl-9" />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {(['Electronics', 'Furniture', 'Raw Materials', 'Consumables', 'Packaging'] as const).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            <SelectItem value="Raw Material">Raw Material</SelectItem>
+            <SelectItem value="Furniture">Furniture</SelectItem>
+            <SelectItem value="Electronics">Electronics</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <div className="glass-card rounded-lg overflow-hidden">
+      <div className="glass-card rounded-lg overflow-hidden border border-border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">SKU</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Name</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Category</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Location</th>
               <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Stock</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Reorder Lvl</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Cost</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Sell</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(p => (
-              <tr key={p.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors duration-150">
+              <tr key={p.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-2.5 font-mono text-xs text-primary">{p.sku}</td>
                 <td className="px-4 py-2.5 text-foreground font-medium">{p.name}</td>
                 <td className="px-4 py-2.5 text-muted-foreground">{p.category}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{p.location}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-foreground">{p.stock.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">{p.reorderLevel}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">${p.costPrice.toFixed(2)}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-foreground">${p.sellingPrice.toFixed(2)}</td>
+                <td className="px-4 py-2.5 text-right font-mono text-foreground">{p.current_stock}</td>
                 <td className="px-4 py-2.5">
-                  {p.stock <= p.reorderLevel ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-destructive/15 text-destructive">Low Stock</span>
+                  {p.current_stock <= p.reorder_level ? (
+                    <span className="px-2 py-0.5 rounded text-xs bg-destructive/15 text-destructive">Low Stock</span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success/15 text-success">In Stock</span>
+                    <span className="px-2 py-0.5 rounded text-xs bg-success/15 text-success">In Stock</span>
                   )}
                 </td>
               </tr>

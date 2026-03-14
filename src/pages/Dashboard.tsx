@@ -3,7 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useInventoryStore } from '@/stores/inventoryStore';
-
+import DashboardKPIs from "@/components/Dashboard/Dashboardkpis";
 const chartData = [
   { date: 'Mar 8', inbound: 320, outbound: 180 },
   { date: 'Mar 9', inbound: 450, outbound: 290 },
