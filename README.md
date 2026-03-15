@@ -6,7 +6,7 @@ This project solves a problem statement that we were given at our first Odoo-org
 
 ## 🚀 Live Demonstration
 
-Experience the live system here: **[odooims.vercel.app/](https://www.google.com/search?q=https://odooims.vercel.app/)**
+Experience the live system here: [**[odooims.vercel.app/](https://www.google.com/search?q=https://odooims.vercel.app/)**](https://odooims.vercel.app/)
 
 ---
 
