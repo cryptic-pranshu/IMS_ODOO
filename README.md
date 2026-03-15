@@ -1,6 +1,6 @@
-# IMS Pro — Inventory Management System
+# IMS Pro - Inventory Management System
 
-**IMS Pro** is a high-performance, Full-Stack Inventory Management System (IMS) inspired by enterprise solutions like Odoo. Designed with a "Dark Mode" aesthetic, it provides a centralized platform for real-time stock tracking, automated warehouse operations, and data-driven inventory intelligence.
+**IMS Pro** is a high-performance, Full-Stack Inventory Management System (IMS) inspired by enterprise solutions like Odoo. It provides a centralized platform for real-time stock/receipts tracking, automated warehouse operations, and data-driven inventory intelligence.
 This project solves a problem statement that we were given at our first Odoo-organized hackathon.
 ---
 
