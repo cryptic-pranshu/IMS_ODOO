@@ -8,6 +8,7 @@ This project solves a problem statement that we were given at our first Odoo-org
 
 Experience the live system here: [IMS-ODOO](https://odooims.vercel.app/)
 
+![IMS LIVE-VIEW](https://ibb.co/k2fLmyx9)
 ---
 
 ## 🌟 Key Features
