@@ -1,29 +1,34 @@
+// db.cjs  ← filename must be lowercase to match the require() in kpiRoutes.cjs
+//            Linux (Vercel's runtime) is case-sensitive: "Db.cjs" ≠ "db.cjs"
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Create the pool instance
+// Strip surrounding quotes that some .env editors add
+// e.g.  "postgresql://..."  →  postgresql://...
+const connectionString = process.env.DATABASE_URL?.replace(/^["']|["']$/g, '');
+
+if (!connectionString) {
+  throw new Error(
+    '❌  DATABASE_URL is missing or empty in your .env file.\n' +
+    '    Expected: DATABASE_URL=postgresql://<user>:<pass>@<host>/<db>?sslmode=require'
+  );
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Required for Neon cloud connections
-  }
+  connectionString,
+  ssl: { rejectUnauthorized: false }, // Required for Neon.tech
+  // ── Serverless-safe pool size ──────────────────────────────────────────────
+  // Vercel spins up one function instance per concurrent request.
+  // If each instance opens 10 connections, Neon's free tier (max 100) exhausts
+  // quickly under load. max:1 means each cold-start instance holds at most one
+  // connection, which Neon can handle across many concurrent instances.
+  max: 1,
+  idleTimeoutMillis: 10_000,   // Release idle connections quickly (serverless)
+  connectionTimeoutMillis: 5_000,
 });
 
-// Export the POOL directly so kpiRoutes.cjs can use pool.query
-// 1. Export the pool so other files can use pool.query()
+pool.on('error', (err) => {
+  console.error('⚠️  Unexpected PostgreSQL pool error:', err.message);
+});
+
 module.exports = pool;
-
-// 2. Attach your helper functions to the pool object
-pool.getDashboardKPIs = async () => {
-  const totalStock = await pool.query('SELECT SUM(current_stock) FROM products');
-  const lowStock = await pool.query('SELECT COUNT(*) FROM products WHERE current_stock <= reorder_level');
-  return {
-    totalProducts: Number(totalStock.rows[0].sum || 0),
-    lowStockItems: Number(lowStock.rows[0].count || 0)
-  };
-};
-
-pool.validateReceipt = async (sku, qty) => {
-  await pool.query('UPDATE products SET current_stock = current_stock + $1 WHERE sku = $2', [qty, sku]);
-  await pool.query('INSERT INTO stock_ledger (type, quantity, reference_no) VALUES ($1, $2, $3)', ['Receipt', qty, `REC-${sku}`]);
-};

@@ -118,23 +118,39 @@ interface InventoryState {
   addTransfer: (transfer: Omit<InternalTransfer, 'id'>) => void;
 }
 
+// ── Persistence Helper ───────────────────────────────────────────────────────
+const savedUser = localStorage.getItem('ims_auth');
+const initialUser = savedUser ? JSON.parse(savedUser) : null;
+
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   products: sampleProducts,
   moves: sampleMoves,
   receipts: sampleReceipts,
   deliveries: sampleDeliveries,
   transfers: sampleTransfers,
-  isAuthenticated: false,
-  currentUser: null,
+  
+  // Initialize from LocalStorage to survive refreshes
+  isAuthenticated: !!initialUser,
+  currentUser: initialUser,
 
   login: (email, password) => {
     if (email && password.length >= 4) {
-      set({ isAuthenticated: true, currentUser: { email, name: email.split('@')[0] } });
+      const userData = { email, name: email.split('@')[0] };
+      
+      // Save to disk
+      localStorage.setItem('ims_auth', JSON.stringify(userData));
+      
+      set({ isAuthenticated: true, currentUser: userData });
       return true;
     }
     return false;
   },
-  logout: () => set({ isAuthenticated: false, currentUser: null }),
+
+  logout: () => {
+    // Clear disk
+    localStorage.removeItem('ims_auth');
+    set({ isAuthenticated: false, currentUser: null });
+  },
 
   validateReceipt: (id) => {
     const state = get();
